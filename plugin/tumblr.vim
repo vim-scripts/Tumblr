@@ -1,30 +1,32 @@
 " tumblr.vim - Tumblr
 " Maintainer:   Travis Jeffery <eatsleepgolf@gmail.com>
-" Time-stamp: <05 Aug 2008 03:42:05 Travis Jeffery>
+" Time-stamp: <Mon Sep  1 15:50:46 EDT 2008 Travis Jeffery>
 "
 "Exit quickly when:
 "- this plugin was already loaded (or disabled)
 "- when 'compatible' is set
- if (exists("g:loaded_tumblr") && g:loaded_tumblr) || &cp
-     finish
- endif
- let g:loaded_tumblr = 1
- 
+if (exists("g:loaded_tumblr") && g:loaded_tumblr) || &cp
+    finish
+endif
+
+let g:loaded_tumblr = 1
+
 "let s:cpo_save = &cpo
 "set cpo&vim
 
 " Code {{{1
-command! -nargs=0 TumblrNew exec("py tumblr_new_post()")
-command! -nargs=0 TumblrPost exec("py send_post()")
+command! -nargs=0 TumblrNew exec("py new_post()")
+command! -nargs=0 TumblrPost exec("py post_normal()")
+command! -range TumblrPostRange exec('py post_range(<f-line1>, <f-line2>)')
 " }}}1
 
 " let &cpo = s:cpo_save
 
 python <<EOF
-from vim import *
+import vim
 from urllib import urlencode, urlopen
 
-def tumblr_new_post():
+def new_post():
     cb = vim.current.buffer
     cb[0] = "Title: "
     cb.append("-- Post follows this line --")
@@ -39,14 +41,26 @@ def get_title():
     title = first_line.strip("Title :")
     return title
 
-def send_post():
+def post_normal():
+    title = get_title()
+    body = get_body()
+    send_post(title, body)
+
+def send_post(title, body):
     url = "http://www.tumblr.com/api/write"
     email = vim.eval("g:tumblr_email")
     password = vim.eval("g:tumblr_password")
-    title = get_title()
-    body = get_body()
     data = urllib.urlencode({"email" : email, "password" : password, "title" : title, "body" : body})
     res = urllib.urlopen(url, data)
+
+def post_range(line1, line2):
+    range = vim.current.buffer.range(int(line1), int(line2))
+    if len(range) < 2:
+        print "Range can't be less than two lines."
+    else:
+        title = range[0]
+        body = "\n".join(range[1:])
+        send_post(title, body)
 
 EOF
 
